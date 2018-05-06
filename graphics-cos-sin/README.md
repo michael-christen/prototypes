@@ -8,6 +8,5 @@ rotation and projection could be so straightforward.
 ## Future Improvements
 
 - [ ] Don't make an image, write to an updatable canvas
-- [ ] Add keyboard commands to interact
+- [ ] Add keyboard commands to interact: Possibly `pyglet`?
 - [ ] Possibly make a game of it
-
