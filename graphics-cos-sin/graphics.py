@@ -1,6 +1,9 @@
 import math
+import pyglet
 
-from PIL import Image
+from pyglet import gl
+
+
 
 
 WIDTH = 256
@@ -9,6 +12,44 @@ HEIGHT = 256
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+
+
+window = pyglet.window.Window(WIDTH, HEIGHT)
+
+
+def setup():
+    gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+
+class Image(object):
+    def __init__(self, width, height, base_color=None):
+        base_color = base_color or (0, 0, 0)
+        self.width = width
+        self.height = height
+        self.data = [
+            [base_color for _ in xrange(height)] for _ in xrange(width)
+        ]
+
+    def getpixel(self, x_y):
+        return self.data[int(x_y[0])][int(x_y[1])]
+
+    def putpixel(self, x_y, val):
+        self.data[x_y[0]][x_y[1]] = val
+
+    def draw(self):
+        points = []
+        colors = []
+        for x in xrange(self.width):
+            for y in xrange(self.height):
+                points.append(self.width - x)
+                points.append(self.height - y)
+                for v in self.data[x][y]:
+                    colors.append(v)
+        vertex_list = pyglet.graphics.vertex_list(
+            self.width * self.height,
+            ('v2i', points),
+            ('c3B', colors))
+        vertex_list.draw(gl.GL_POINTS)
 
 
 def _map_range(x, min_from, max_from, min_to, max_to):
@@ -100,7 +141,7 @@ def draw_sprite(im, sprite, offset_x, offset_y):
 def rotate_im(im, angle, scale=1):
     start_x = 0
     start_y = 0
-    new_im = Image.new('RGB', (WIDTH, HEIGHT))
+    new_im = Image(WIDTH, HEIGHT)
     dx = scale * math.cos(angle)
     dy = scale * math.sin(angle)
     for dest_y in xrange(HEIGHT):
@@ -120,7 +161,7 @@ def rotate_im(im, angle, scale=1):
 
 def project_im(im, angle, cx=0, cy=0, scale_x=200.0, scale_y=200.0, space_z=100.0,
                horizon=10):
-    new_im = Image.new('RGB', (WIDTH, HEIGHT))
+    new_im = Image(WIDTH, HEIGHT)
     for screen_y in xrange(HEIGHT):
         distance = (space_z * scale_y) / (screen_y + horizon)
         horizontal_scale = distance / scale_x
@@ -140,8 +181,10 @@ def project_im(im, angle, cx=0, cy=0, scale_x=200.0, scale_y=200.0, space_z=100.
     return new_im
 
 
-def main():
-    im = Image.new('RGB', (WIDTH, HEIGHT))
+@window.event
+def on_draw():
+    setup()
+    im = Image(WIDTH, HEIGHT)
     # im = draw_circle(im)
     # im = draw_sin(im)
     # im = draw_cos(im)
@@ -153,7 +196,15 @@ def main():
     # Orbit
     # Draw circle efficiently
     # Homing missile w/ atan2
-    im.show()
+    my_im = Image(WIDTH, HEIGHT)
+    for x in xrange(WIDTH):
+        for y in xrange(HEIGHT):
+            my_im.data[x][y] = im.getpixel((x, y))
+    my_im.draw()
 
+
+def main():
+    pyglet.app.run()
 if __name__ == '__main__':
     main()
+    # tk_image()
