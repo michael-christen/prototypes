@@ -181,6 +181,22 @@ def project_im(im, angle, cx=0, cy=0, scale_x=200.0, scale_y=200.0, space_z=100.
     return new_im
 
 
+class ViewState(object):
+    def __init__(self):
+        self.angle = 0
+        self.x = 0
+
+    def change_angle(self, diff):
+        self.angle += diff
+
+    def change_x(self, diff):
+        self.x += diff
+
+
+
+VIEW_STATE = ViewState()
+
+
 @window.event
 def on_draw():
     setup()
@@ -191,7 +207,7 @@ def on_draw():
     # Sprites and sprite projection
     im = draw_sprites(im)
     # im = rotate_im(im, math.pi/4.0)
-    im = project_im(im, 0)
+    im = project_im(im, VIEW_STATE.angle, cx=VIEW_STATE.x)
     # Racing car with key commands
     # Orbit
     # Draw circle efficiently
@@ -202,9 +218,31 @@ def on_draw():
             my_im.data[x][y] = im.getpixel((x, y))
     my_im.draw()
 
+ANGLE_DELTA = math.pi / 30.0
+X_DELTA = 100
+SYMBOL2LAMBDA = {
+    pyglet.window.key.LEFT: (lambda s: s.change_angle(ANGLE_DELTA)),
+    pyglet.window.key.RIGHT: (lambda s: s.change_angle(-ANGLE_DELTA)),
+    pyglet.window.key.UP: (lambda s: s.change_x(X_DELTA)),
+    pyglet.window.key.DOWN: (lambda s: s.change_x(-X_DELTA)),
+
+}
+
+
+
+@window.event
+def on_key_press(symbol, modifiers):
+    global VIEW_STATE
+    fxn = SYMBOL2LAMBDA.get(symbol)
+    if not fxn:
+        print symbol, modifiers
+        return
+    fxn(VIEW_STATE)
+
 
 def main():
     pyglet.app.run()
+
+
 if __name__ == '__main__':
     main()
-    # tk_image()
