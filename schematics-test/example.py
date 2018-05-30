@@ -3,6 +3,12 @@ from schematics.types import StringType, FloatType, PolyModelType
 
 
 class PolymorphicID(StringType):
+    """Add this type to a class to allow it to work w/ ClaimPolyModelType
+
+    ClaimPolyModelType recognizes these types and looks for the identifier
+    specified. These types also automatically ensure that the value is always
+    set to the identifier by restricting choices.
+    """
     def __init__(self, identifier, *args, **kwargs):
         self.identifier = identifier
         new_kwargs = dict(
@@ -19,8 +25,11 @@ class PolymorphicID(StringType):
 
 
 def _generate_claim_function(models):
-    """Return a generic function that evaluates the data to determine which of
-    the models to return.
+    """Return a function that evaluates the data to determine which of the
+    models to return.
+
+    Looks for a PolymorphicID in each of the models, and ensures there is only
+    one.
     """
     polymorphic_field_name = None
     field_value2model = {}
@@ -66,10 +75,17 @@ def _generate_claim_function(models):
 
 
 class ClaimPolyModelType(PolyModelType):
+    """Extend PolyModelType to set up the claim_function automatically
+
+    This allows for the use of specific identifiers defined with a
+    PolymorphicID, that specify which model to use. All of the field names must
+    be the same between polymorphic models.
+    """
     def __init__(self, model_spec, *args, **kwargs):
         new_kwargs = dict(
             claim_function=_generate_claim_function(model_spec),
         )
+        # Check that not conflicting with kwargs
         for arg in new_kwargs:
             if arg in kwargs:
                 raise AssertionError("{} not allowed in __init__ of {}"
