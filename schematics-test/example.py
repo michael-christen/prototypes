@@ -2,26 +2,94 @@ from schematics.models import Model
 from schematics.types import StringType, FloatType, PolyModelType
 
 
-class Man(Model):
-    type = StringType(required=True, choices=('man',), default='man')
-    arm_strength = FloatType(required=True)
+class PolymorphicID(StringType):
+    def __init__(self, identifier, *args, **kwargs):
+        self.identifier = identifier
+        new_kwargs = dict(
+            required=True,
+            choices=(identifier,),
+            default=identifier,
+        )
+        for arg in new_kwargs:
+            if arg in kwargs:
+                raise AssertionError("{} not allowed in __init__ of {}"
+                                     .format(arg, self.__class__.__name__))
+        kwargs.update(new_kwargs)
+        super(PolymorphicID, self).__init__(*args, **kwargs)
 
-    @classmethod
-    def _claim_polymorphic(cls, data):
-        return data.get('type') == 'man'
+
+def _generate_claim_function(models):
+    """Return a generic function that evaluates the data to determine which of
+    the models to return.
+    """
+    polymorphic_field_name = None
+    field_value2model = {}
+    # Define a mapping of type to model
+    for model in models:
+        polymorphic_field_value = None
+        for field_name, field_type in model.fields.items():
+            if isinstance(field_type, PolymorphicID):
+                if polymorphic_field_name is None:
+                    polymorphic_field_name = field_name
+                else:
+                    assert polymorphic_field_name == field_name, (
+                        "Multiple polymorphic field names in between Models")
+                if polymorphic_field_value is None:
+                    polymorphic_field_value = field_type.identifier
+                else:
+                    raise AssertionError(
+                        "Got multiple polymorphicIDs in a Model")
+        if polymorphic_field_value is None:
+            raise AssertionError("No polymorphicID found for model: {}"
+                                 .format(model))
+        existing_model = field_value2model.get(polymorphic_field_value)
+        if existing_model:
+            raise AssertionError("Duplicate polymorphicIDs found with value "
+                                 "{}.  {} & {}".format(polymorphic_field_value,
+                                                       existing_model, model))
+        field_value2model[polymorphic_field_value] = model
+
+    def _claim_function(polymodel, data):
+        """Return the class that corresponds to this data."""
+        try:
+            value = data[polymorphic_field_name]
+        except KeyError:
+            raise AssertionError("Data should have {}. {}"
+                                 .format(polymorphic_field_name, data))
+        try:
+            return field_value2model[value]
+        except KeyError:
+            raise AssertionError("None of these models {} match {}"
+                                 .format(models, value))
+
+    return _claim_function
+
+
+class ClaimPolyModelType(PolyModelType):
+    def __init__(self, model_spec, *args, **kwargs):
+        new_kwargs = dict(
+            claim_function=_generate_claim_function(model_spec),
+        )
+        for arg in new_kwargs:
+            if arg in kwargs:
+                raise AssertionError("{} not allowed in __init__ of {}"
+                                     .format(arg, self.__class__.__name__))
+        kwargs.update(new_kwargs)
+        super(ClaimPolyModelType, self).__init__(model_spec, *args, **kwargs)
+
+
+class Man(Model):
+    type = PolymorphicID('man')
+    arm_strength = FloatType(required=True)
 
 
 class Woman(Model):
-    type = StringType(required=True, choices=('woman',), default='woman')
+    type = PolymorphicID('woman')
     emotional_strength = FloatType(required=True)
-
-    @classmethod
-    def _claim_polymorphic(cls, data):
-        return data.get('type') == 'woman'
 
 
 class PersonParser(Model):
-    person = PolyModelType((Man, Woman))
+    person = ClaimPolyModelType((Man, Woman))
 
 
 class Somebody(object):
