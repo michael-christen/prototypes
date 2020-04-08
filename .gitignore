@@ -99,3 +99,7 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# keys
+trello/api_keys.txt
+reader-helper/api_keys.txt
