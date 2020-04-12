@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import webbrowser
 
 from goodreads import client
@@ -6,6 +7,8 @@ from goodreads import client
 
 def get_client():
     gc = client.GoodreadsClient(
+        os.getenv('GOODREADS_CLIENT_ID'),
+        os.getenv('GOODREADS_CLIENT_SECRET'),
     )
     # gc.authenticate()
     return gc
